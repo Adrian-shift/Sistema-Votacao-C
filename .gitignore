@@ -1,4 +1,4 @@
-buil/
+build/
 *.o
 *.db
 *.sqlite
