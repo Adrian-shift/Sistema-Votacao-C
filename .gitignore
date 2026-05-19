@@ -1,0 +1,4 @@
+buil/
+*.o
+*.db
+*.sqlite
