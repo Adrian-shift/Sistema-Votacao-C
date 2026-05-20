@@ -11,21 +11,27 @@ apt install -y \
 	sqlite3 \
 	netcat-openbsd
 
-# 2. Automatizar a resolução do terminal para caber a interface 90x28
-echo "Configurando a resolução do terminal..."
+# 2. Automatizar a resolução do terminal nas configurações do GRUB
+echo "Configurando os parâmetros de vídeo do terminal..."
 
-# Limpa linhas antigas para evitar duplicar se o script rodar mais de uma vez
+# Remove linhas antigas de GFXMODE e GFXPAYLOAD se existirem (para evitar duplicações)
 sed -i '/^GRUB_GFXMODE=/d' /etc/default/grub
 sed -i '/^GRUB_GFXPAYLOAD_LINUX=/d' /etc/default/grub
 
-# Injeta as configurações direto no arquivo do GRUB
+# Adiciona as configurações de tamanho para o GRUB inicial
 echo "GRUB_GFXMODE=1024x768" >> /etc/default/grub
 echo "GRUB_GFXPAYLOAD_LINUX=keep" >> /etc/default/grub
 
-# Atualiza o GRUB para aplicar as mudanças no próximo boot
+# 3. MÁGICA DO SCRIPT: Altera a linha do Kernel automaticamente!
+# Esse comando procura por GRUB_CMDLINE_LINUX_DEFAULT e injeta o video=1024x768 dentro das aspas,
+# não importando o que já esteja escrito lá (como "quiet" ou "splash").
+sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 video=1024x768"/' /etc/default/grub
+
+# 4. Atualiza o GRUB do Debian para aplicar tudo
 update-grub
 
-echo "--------------------------------------------------------"
-echo "Pronto! Dependências instaladas e tela configurada."
-echo "IMPORTANTE: Execute o comando 'reboot' para aplicar a nova resolução."
-echo "--------------------------------------------------------"
+echo "------------------------------------------------------------"
+echo " CONFIGURAÇÃO CONCLUÍDA COM SUCESSO!"
+echo " Para que o terminal mude de tamanho, a VM precisa reiniciar."
+echo " Digite 'reboot' agora para aplicar."
+echo "------------------------------------------------------------"
