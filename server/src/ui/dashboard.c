@@ -72,9 +72,9 @@ void draw_dashboard()
     snprintf(
         status,
         sizeof(status),
-        "Clientes conectados: %d\n\n"
-        "Total de votos: %d\n\n"
-        "Threads ativas: %d\n",
+        "Clientes: %d\n\n"
+        "Votos: %d\n\n"
+        "Threads: %d\n",
         server_state.connected_clients,
         server_state.total_votes,
         server_state.active_threads
@@ -95,9 +95,9 @@ void draw_dashboard()
     newtComponent btn_clients;
     newtComponent btn_exit;
 
-    // Ajustado cirurgicamente para 76x22 (cabe perfeitamente no limite 80x25 do terminal puro)
+    // DEFINIÇÃO DA JANELA: Ajustada para 68x22 (cabe com sobra segura dentro de 73x27)
     newtCenteredWindow(
-        76,
+        68,
         22,
         "Servidor de Votacao"
     );
@@ -108,11 +108,11 @@ void draw_dashboard()
         "SERVIDOR ONLINE"
     );
 
-    // Ajustado largura para 22 para caber no novo layout
+    // CAIXA DE STATUS: Coluna 2, Largura 18, Altura 12
     status_box = newtTextbox(
         2,
         3,
-        22,
+        18,
         12,
         NEWT_FLAG_BORDER
     );
@@ -122,11 +122,11 @@ void draw_dashboard()
         status
     );
 
-    // Movido para a coluna 26 e largura reduzida para 47 para não estourar a janela de 76
+    // CAIXA DE LOGS: Empurrada para a Coluna 22, Largura 42 (22 + 42 = 64, respeitando o limite de 68)
     logs_box = newtTextbox(
-        26,
+        22,
         3,
-        47,
+        42,
         14,
         NEWT_FLAG_SCROLL | NEWT_FLAG_BORDER
     );
@@ -136,28 +136,27 @@ void draw_dashboard()
         logs
     );
 
-    // Botões reposicionados na linha 19 (a antiga linha 24 ficava fora da tela)
-    // Encurtamos levemente os textos dos botões para caberem na largura menor
+    // BOTÕES: Alinhados horizontalmente na linha 19 de forma compacta para não estourarem as laterais
     btn_reports = newtButton(
         2,
         19,
-        "F1 Relat"
+        "F1"
     );
 
     btn_logs = newtButton(
-        17,
+        14,
         19,
-        "F2 Logs"
+        "F2"
     );
 
     btn_clients = newtButton(
-        31,
+        26,
         19,
-        "F3 Clien"
+        "F3"
     );
 
     btn_exit = newtButton(
-        58,
+        50,
         19,
         "Q Sair"
     );
@@ -178,7 +177,6 @@ void draw_dashboard()
 
     newtComponent result = newtRunForm(form);
 
-    // Mantidas exatamente as mesmas lógicas de clique originais
     if(result == btn_reports)
     {
         show_popup(
