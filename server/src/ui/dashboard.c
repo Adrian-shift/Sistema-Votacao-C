@@ -225,6 +225,9 @@ void draw_dashboard()
 
 void start_dashboard()
 {
+	
+	system("echo -ne '\\e[8;30;100t'");
+	
     add_log("[INFO] Servidor iniciado");
     add_log("[INFO] Interface carregada");
     add_log("[INFO] Sistema pronto");
