@@ -226,7 +226,8 @@ void draw_dashboard()
 void start_dashboard()
 {
 	
-	system("echo -ne '\\e[8;30;100t'");
+	system("stty cols 100 rows 30");
+	system("stty cols 100 rows 30 && clear");
 	
     add_log("[INFO] Servidor iniciado");
     add_log("[INFO] Interface carregada");
