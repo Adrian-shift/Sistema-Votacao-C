@@ -11,27 +11,29 @@ apt install -y \
 	sqlite3 \
 	netcat-openbsd
 
-# 2. Automatizar a resolução do terminal nas configurações do GRUB
+# 2. Configurar o tamanho da tela no GRUB
 echo "Configurando os parâmetros de vídeo do terminal..."
 
-# Remove linhas antigas de GFXMODE e GFXPAYLOAD se existirem (para evitar duplicações)
+# Limpa configurações antigas do script para evitar duplicados
 sed -i '/^GRUB_GFXMODE=/d' /etc/default/grub
 sed -i '/^GRUB_GFXPAYLOAD_LINUX=/d' /etc/default/grub
 
-# Adiciona as configurações de tamanho para o GRUB inicial
 echo "GRUB_GFXMODE=1024x768" >> /etc/default/grub
 echo "GRUB_GFXPAYLOAD_LINUX=keep" >> /etc/default/grub
 
-# 3. MÁGICA DO SCRIPT: Altera a linha do Kernel automaticamente!
-# Esse comando procura por GRUB_CMDLINE_LINUX_DEFAULT e injeta o video=1024x768 dentro das aspas,
-# não importando o que já esteja escrito lá (como "quiet" ou "splash").
-sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 video=1024x768"/' /etc/default/grub
+# 3. MÁGICA: Forçar o Kernel a NÃO resetar a tela usando 'nomodeset'
+# Primeiro limpamos qualquer 'video=' ou 'nomodeset' anterior para o script ser reutilizável
+sed -i 's/ video=1024x768//g' /etc/default/grub
+sed -i 's/ nomodeset//g' /etc/default/grub
 
-# 4. Atualiza o GRUB do Debian para aplicar tudo
+# Injeta o 'nomodeset' dentro das aspas do GRUB_CMDLINE_LINUX_DEFAULT
+sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nomodeset"/' /etc/default/grub
+
+# 4. Atualizar o sistema de boot do Debian
 update-grub
 
 echo "------------------------------------------------------------"
-echo " CONFIGURAÇÃO CONCLUÍDA COM SUCESSO!"
-echo " Para que o terminal mude de tamanho, a VM precisa reiniciar."
-echo " Digite 'reboot' agora para aplicar."
+echo " CONFIGURAÇÃO ATUALIZADA COM NOMODESET!"
+echo " Agora sim, a resolução vai ficar travada mesmo após o login."
+echo " Digite 'reboot' para aplicar e testar."
 echo "------------------------------------------------------------"
