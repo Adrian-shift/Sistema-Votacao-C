@@ -2,10 +2,16 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <sys/socket.h>
 
 #include <arpa/inet.h>
 
 #include "client_socket.h"
+
+#define CONNECT_TIMEOUT_SECONDS 5
 
 int connect_server(
     const char *ip,
@@ -31,18 +37,87 @@ int connect_server(
 
     server_addr.sin_port = htons(port);
 
-    inet_pton(
+    if(inet_pton(
         AF_INET,
         ip,
         &server_addr.sin_addr
-    );
+    ) != 1)
+    {
+        close(sock);
+        return -1;
+    }
 
-    if(connect(
+    int flags = fcntl(sock, F_GETFL, 0);
+
+    if(flags < 0)
+    {
+        close(sock);
+        return -1;
+    }
+
+    if(fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        close(sock);
+        return -1;
+    }
+
+    int result = connect(
         sock,
         (struct sockaddr*)&server_addr,
         sizeof(server_addr)
-    ) < 0)
+    );
+
+    if(result < 0 && errno != EINPROGRESS)
     {
+        close(sock);
+        return -1;
+    }
+
+    if(result < 0)
+    {
+        fd_set write_fds;
+
+        FD_ZERO(&write_fds);
+        FD_SET(sock, &write_fds);
+
+        struct timeval timeout;
+
+        timeout.tv_sec = CONNECT_TIMEOUT_SECONDS;
+        timeout.tv_usec = 0;
+
+        result = select(
+            sock + 1,
+            NULL,
+            &write_fds,
+            NULL,
+            &timeout
+        );
+
+        if(result <= 0)
+        {
+            close(sock);
+            return -1;
+        }
+
+        int socket_error = 0;
+        socklen_t socket_error_len = sizeof(socket_error);
+
+        if(getsockopt(
+            sock,
+            SOL_SOCKET,
+            SO_ERROR,
+            &socket_error,
+            &socket_error_len
+        ) < 0 || socket_error != 0)
+        {
+            close(sock);
+            return -1;
+        }
+    }
+
+    if(fcntl(sock, F_SETFL, flags) < 0)
+    {
+        close(sock);
         return -1;
     }
 

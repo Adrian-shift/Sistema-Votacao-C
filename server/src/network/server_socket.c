@@ -176,9 +176,9 @@ void* start_server(void* arg)
     {
         int client_socket;
 
-        socklen_t client_len;
-
         struct sockaddr_in client_addr;
+
+        socklen_t client_len = sizeof(client_addr);
 
         client_socket = accept(
             server_socket,
