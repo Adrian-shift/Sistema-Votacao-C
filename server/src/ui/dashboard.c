@@ -3,59 +3,12 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
-#include <time.h>
-
-//Testando o commit do CLion
 
 #include "../models/server_state.h"
 #include "../network/server_socket.h"
 #include "dashboard.h"
 
 static int running = 1;
-
-void* simulation_thread(void* arg)
-{
-    int client_id = 100;
-
-    while(running)
-    {
-        sleep(3);
-
-        server_state.connected_clients++;
-
-        char log[256];
-
-        sprintf(
-            log,
-            "[INFO] Cliente %d conectado",
-            client_id
-        );
-
-        add_log(log);
-
-        sleep(2);
-
-        server_state.total_votes++;
-
-        sprintf(
-            log,
-            "[INFO] Voto registrado do cliente %d",
-            client_id
-        );
-
-        add_log(log);
-
-        client_id++;
-
-        if(server_state.connected_clients > 5)
-        {
-            server_state.connected_clients = 2;
-        }
-    }
-
-    return NULL;
-}
 
 void show_popup(char* title, char* message)
 {
@@ -214,15 +167,6 @@ void start_dashboard()
     add_log("[INFO] Interface carregada");
     add_log("[INFO] Sistema pronto");
 
-    pthread_t sim_thread;
-
-    pthread_create(
-        &sim_thread,
-        NULL,
-        simulation_thread,
-        NULL
-    );
-    
     pthread_t network_thread;
 
     pthread_create(
@@ -238,6 +182,4 @@ void start_dashboard()
 
         usleep(100000);
     }
-
-    pthread_join(sim_thread, NULL);
 }
