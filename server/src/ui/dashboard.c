@@ -1,6 +1,5 @@
 #include <newt.h>
 #include <pthread.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -20,7 +19,10 @@ void show_popup(char* title, char* message)
     );
 }
 
-void draw_dashboard()
+void update_dashboard_text(
+    newtComponent status_box,
+    newtComponent logs_box
+)
 {
     char status[512];
     char logs[8192] = "";
@@ -43,6 +45,34 @@ void draw_dashboard()
         strcat(logs, "\n\n");
     }
 
+    newtTextboxSetText(
+        status_box,
+        status
+    );
+
+    newtTextboxSetText(
+        logs_box,
+        logs
+    );
+
+    newtRefresh();
+}
+
+void start_dashboard()
+{
+    add_log("[INFO] Servidor iniciado");
+    add_log("[INFO] Interface carregada");
+    add_log("[INFO] Sistema pronto");
+
+    pthread_t network_thread;
+
+    pthread_create(
+        &network_thread,
+        NULL,
+        start_server,
+        NULL
+    );
+
     newtComponent form;
     newtComponent lbl_title;
     newtComponent status_box;
@@ -52,7 +82,6 @@ void draw_dashboard()
     newtComponent btn_clients;
     newtComponent btn_exit;
 
-    // DEFINIÇÃO DA JANELA: Ajustada para 68x22 (cabe com sobra segura dentro de 73x27)
     newtCenteredWindow(
         68,
         22,
@@ -65,7 +94,6 @@ void draw_dashboard()
         "SERVIDOR ONLINE"
     );
 
-    // CAIXA DE STATUS: Coluna 2, Largura 18, Altura 12
     status_box = newtTextbox(
         2,
         3,
@@ -74,12 +102,6 @@ void draw_dashboard()
         NEWT_FLAG_BORDER
     );
 
-    newtTextboxSetText(
-        status_box,
-        status
-    );
-
-    // CAIXA DE LOGS: Empurrada para a Coluna 22, Largura 42 (22 + 42 = 64, respeitando o limite de 68)
     logs_box = newtTextbox(
         22,
         3,
@@ -88,12 +110,6 @@ void draw_dashboard()
         NEWT_FLAG_SCROLL | NEWT_FLAG_BORDER
     );
 
-    newtTextboxSetText(
-        logs_box,
-        logs
-    );
-
-    // BOTÕES: Alinhados horizontalmente na linha 19 de forma compacta para não estourarem as laterais
     btn_reports = newtButton(
         2,
         19,
@@ -132,61 +148,54 @@ void draw_dashboard()
         NULL
     );
 
-    newtFormSetTimer(
-        form,
-        1000
-    );
+    while(running)
+    {
+        struct newtExitStruct exit_status;
 
-    newtComponent result = newtRunForm(form);
+        update_dashboard_text(
+            status_box,
+            logs_box
+        );
 
-    if(result == btn_reports)
-    {
-        show_popup(
-            "Relatorios",
-            "Modulo de relatorios em desenvolvimento"
+        newtFormSetTimer(
+            form,
+            1000
         );
-    }
-    else if(result == btn_logs)
-    {
-        show_popup(
-            "Logs",
-            "Visualizacao detalhada de logs"
+
+        newtFormRun(
+            form,
+            &exit_status
         );
-    }
-    else if(result == btn_clients)
-    {
-        show_popup(
-            "Clientes",
-            "Clientes conectados atualmente"
-        );
-    }
-    else if(result == btn_exit)
-    {
-        running = 0;
+
+        if(exit_status.reason == NEWT_EXIT_COMPONENT)
+        {
+            if(exit_status.u.co == btn_reports)
+            {
+                show_popup(
+                    "Relatorios",
+                    "Modulo de relatorios em desenvolvimento"
+                );
+            }
+            else if(exit_status.u.co == btn_logs)
+            {
+                show_popup(
+                    "Logs",
+                    "Visualizacao detalhada de logs"
+                );
+            }
+            else if(exit_status.u.co == btn_clients)
+            {
+                show_popup(
+                    "Clientes",
+                    "Clientes conectados atualmente"
+                );
+            }
+            else if(exit_status.u.co == btn_exit)
+            {
+                running = 0;
+            }
+        }
     }
 
     newtFormDestroy(form);
-}
-
-void start_dashboard()
-{
-    add_log("[INFO] Servidor iniciado");
-    add_log("[INFO] Interface carregada");
-    add_log("[INFO] Sistema pronto");
-
-    pthread_t network_thread;
-
-    pthread_create(
-        &network_thread,
-        NULL,
-        start_server,
-        NULL
-    );
-
-    while(running)
-    {
-        draw_dashboard();
-
-        usleep(100000);
-    }
 }
