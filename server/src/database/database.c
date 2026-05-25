@@ -68,6 +68,62 @@ int init_database()
         &err_msg
     );
 
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('104');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('105');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('106');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('107');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('108');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('109');",
+        0,
+        0,
+        &err_msg
+    );
+
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('110');",
+        0,
+        0,
+        &err_msg
+    );
+
     return 1;
 }
 
