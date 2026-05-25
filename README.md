@@ -78,7 +78,7 @@ make run
 
 Use:
 
-- IP: 127.0.0.1
+- IP: (da maquina servidor)
 - Porta: 8080
 - Eleitor: 101
 
