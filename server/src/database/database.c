@@ -124,6 +124,14 @@ int init_database()
         &err_msg
     );
 
+    sqlite3_exec(
+        db,
+        "INSERT OR IGNORE INTO eleitores VALUES ('20231IREINFINT0040');",
+        0,
+        0,
+        &err_msg
+    );
+
     return 1;
 }
 
