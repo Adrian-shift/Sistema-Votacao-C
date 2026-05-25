@@ -25,7 +25,7 @@ cd votacao-distribuida
 ./scripts/install_dependencies.sh
 ```
 
----
+--- 
 
 # Servidor
 
