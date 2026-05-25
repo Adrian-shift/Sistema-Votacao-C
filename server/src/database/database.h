@@ -11,6 +11,8 @@ int voter_exists(const char *voter_id);
 
 int has_voted(const char *voter_id);
 
+int count_votes();
+
 int save_vote(
     const char *voter_id,
     const char *candidate,

@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../database/database.h"
 #include "../models/server_state.h"
 #include "../network/server_socket.h"
 #include "dashboard.h"
@@ -23,6 +24,7 @@ void draw_dashboard()
 {
     char status[512];
     char logs[8192] = "";
+    int total_votes = count_votes();
 
     snprintf(
         status,
@@ -31,7 +33,7 @@ void draw_dashboard()
         "Votos: %d\n\n"
         "Threads: %d\n",
         server_state.connected_clients,
-        server_state.total_votes,
+        total_votes,
         server_state.active_threads
     );
 

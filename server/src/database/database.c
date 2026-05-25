@@ -189,6 +189,36 @@ int has_voted(const char *voter_id)
     return result;
 }
 
+int count_votes()
+{
+    sqlite3_stmt *stmt;
+
+    const char *sql =
+        "SELECT COUNT(*) FROM votos";
+
+    if(sqlite3_prepare_v2(
+        db,
+        sql,
+        -1,
+        &stmt,
+        NULL
+    ) != SQLITE_OK)
+    {
+        return 0;
+    }
+
+    int total = 0;
+
+    if(sqlite3_step(stmt) == SQLITE_ROW)
+    {
+        total = sqlite3_column_int(stmt, 0);
+    }
+
+    sqlite3_finalize(stmt);
+
+    return total;
+}
+
 int save_vote(
     const char *voter_id,
     const char *candidate,
