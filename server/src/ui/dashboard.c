@@ -132,6 +132,11 @@ void draw_dashboard()
         NULL
     );
 
+    newtFormSetTimer(
+        form,
+        1000
+    );
+
     newtComponent result = newtRunForm(form);
 
     if(result == btn_reports)
