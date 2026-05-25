@@ -22,7 +22,7 @@ git clone https://github.com/Adrian-shift/Sistema-Votacao-C.git
 
 ```bash
 cd Sistema-Votacao-C
-chmod +x scripts/install_dependencies.sh [PERMISSÃO]
+chmod +x scripts/install_dependencies.sh #Permissão para o script
 ./scripts/install_dependencies.sh
 ```
 
