@@ -40,7 +40,7 @@ void draw_dashboard()
     for(int i = 0; i < server_state.log_count; i++)
     {
         strcat(logs, server_state.logs[i]);
-        strcat(logs, "\n");
+        strcat(logs, "\n\n");
     }
 
     newtComponent form;
