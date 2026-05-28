@@ -42,7 +42,7 @@ void update_dashboard_text(
     for(int i = 0; i < server_state.log_count; i++)
     {
         strcat(logs, server_state.logs[i]);
-        strcat(logs, "\n\n");
+        strcat(logs, "\n");
     }
 
     newtTextboxSetText(
@@ -62,7 +62,7 @@ void start_dashboard()
 {
     add_log("[INFO] Servidor iniciado");
     add_log("[INFO] Interface carregada");
-    add_log("[INFO] Sistema pronto \n");
+    add_log("[INFO] Sistema pronto");
 
     pthread_t network_thread;
 
