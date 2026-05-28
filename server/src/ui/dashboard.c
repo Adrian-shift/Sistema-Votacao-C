@@ -149,6 +149,21 @@ void start_dashboard()
         NULL
     );
 
+    newtFormAddHotKey(
+        form,
+        NEWT_KEY_F1
+    );
+
+    newtFormAddHotKey(
+        form,
+        NEWT_KEY_F2
+    );
+
+    newtFormAddHotKey(
+        form,
+        NEWT_KEY_F3
+    );
+
     while(running)
     {
         struct newtExitStruct exit_status;
@@ -168,7 +183,28 @@ void start_dashboard()
             &exit_status
         );
 
-        if(exit_status.reason == NEWT_EXIT_COMPONENT)
+        if(exit_status.reason == NEWT_EXIT_HOTKEY)
+        {
+            if(exit_status.u.key == NEWT_KEY_F1)
+            {
+                show_results();
+            }
+            else if(exit_status.u.key == NEWT_KEY_F2)
+            {
+                show_popup(
+                    "Logs",
+                    "Visualizacao detalhada de logs"
+                );
+            }
+            else if(exit_status.u.key == NEWT_KEY_F3)
+            {
+                show_popup(
+                    "Clientes",
+                    "Clientes conectados atualmente"
+                );
+            }
+        }
+        else if(exit_status.reason == NEWT_EXIT_COMPONENT)
         {
             if(exit_status.u.co == btn_reports)
             {
