@@ -15,17 +15,18 @@ Projeto acadêmico desenvolvido em C no Debian Linux.
 ### Clonar
 
 ```bash
-git clone https://github.com/SEU_USUARIO/votacao-distribuida.git
+git clone https://github.com/Adrian-shift/Sistema-Votacao-C.git
 ```
 
 ### Instalar dependências
 
 ```bash
-cd votacao-distribuida
+cd Sistema-Votacao-C
+chmod +x scripts/install_dependencies.sh #Permissão para o script
 ./scripts/install_dependencies.sh
 ```
 
----
+--- 
 
 # Servidor
 
@@ -77,7 +78,7 @@ make run
 
 Use:
 
-- IP: 127.0.0.1
+- IP: (da maquina servidor)
 - Porta: 8080
 - Eleitor: 101
 
