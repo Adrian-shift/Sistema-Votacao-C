@@ -27,7 +27,7 @@ void* handle_client(void* arg)
 
     server_state.connected_clients++;
 
-    add_log("/n[INFO] Novo cliente conectado");
+    add_log("\n[INFO] Novo cliente conectado");
 
 	while((bytes = recv(client_socket, buffer, sizeof(buffer)-1, 0)) > 0)
 	{

@@ -62,7 +62,7 @@ void start_dashboard()
 {
     add_log("[INFO] Servidor iniciado");
     add_log("[INFO] Interface carregada");
-    add_log("[INFO] Sistema pronto");
+    add_log("[INFO] Sistema pronto \n");
 
     pthread_t network_thread;
 
