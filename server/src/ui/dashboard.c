@@ -7,6 +7,7 @@
 #include "../models/server_state.h"
 #include "../network/server_socket.h"
 #include "dashboard.h"
+#include "results.h"
 
 static int running = 1;
 
@@ -171,10 +172,7 @@ void start_dashboard()
         {
             if(exit_status.u.co == btn_reports)
             {
-                show_popup(
-                    "Relatorios",
-                    "Modulo de relatorios em desenvolvimento"
-                );
+                show_results();
             }
             else if(exit_status.u.co == btn_logs)
             {

@@ -13,6 +13,12 @@ int has_voted(const char *voter_id);
 
 int count_votes();
 
+int get_vote_results(
+    char results[][128],
+    int counts[],
+    int max_results
+);
+
 int save_vote(
     const char *voter_id,
     const char *candidate,

@@ -227,6 +227,60 @@ int count_votes()
     return total;
 }
 
+int get_vote_results(
+    char results[][128],
+    int counts[],
+    int max_results
+)
+{
+    sqlite3_stmt *stmt;
+
+    const char *sql =
+        "SELECT candidate, COUNT(*) "
+        "FROM votos "
+        "GROUP BY candidate "
+        "ORDER BY COUNT(*) DESC, candidate ASC";
+
+    if(sqlite3_prepare_v2(
+        db,
+        sql,
+        -1,
+        &stmt,
+        NULL
+    ) != SQLITE_OK)
+    {
+        return 0;
+    }
+
+    int index = 0;
+
+    while(
+        sqlite3_step(stmt) == SQLITE_ROW &&
+        index < max_results
+    )
+    {
+        const unsigned char *candidate =
+            sqlite3_column_text(stmt, 0);
+
+        int count =
+            sqlite3_column_int(stmt, 1);
+
+        snprintf(
+            results[index],
+            128,
+            "%s",
+            candidate ? (const char*)candidate : "desconhecido"
+        );
+
+        counts[index] = count;
+        index++;
+    }
+
+    sqlite3_finalize(stmt);
+
+    return index;
+}
+
 int save_vote(
     const char *voter_id,
     const char *candidate,
