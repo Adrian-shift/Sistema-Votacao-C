@@ -24,16 +24,13 @@ git clone https://github.com/Adrian-shift/Sistema-Votacao-C.git
 ```bash
 cd Sistema-Votacao-C
 chmod +x scripts/install_dependencies.sh # Permissão para o script
-
-./scripts/install_dependencies.sh
-apt install libssl-dev # OpenSSL para criptografia
 ```
 
 ### Gerar certificados SSL/TLS
 
 ```bash
 chmod +x scripts/generate_certs.sh
-./scripts/generate_certs.sh
+./scripts/generate_certs.sh # OpenSSL para criptografia
 ```
 
 Isso cria:
