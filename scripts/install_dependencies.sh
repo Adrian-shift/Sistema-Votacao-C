@@ -9,5 +9,6 @@ apt install -y \
 	libnewt-dev \
 	libsqlite3-dev \
 	sqlite3 \
-	netcat-openbsd
+	netcat-openbsd \
+	libssl-dev
 
