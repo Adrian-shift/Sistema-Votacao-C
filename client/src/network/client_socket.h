@@ -1,10 +1,12 @@
 #ifndef CLIENT_SOCKET_H
 #define CLIENT_SOCKET_H
 
+#include <openssl/ssl.h>
+
 typedef struct {
     int socket_fd;
-    void* ssl;
-    void* ssl_ctx;
+    SSL* ssl;
+    SSL_CTX* ssl_ctx;
 } ssl_connection_t;
 
 ssl_connection_t* connect_server_ssl(

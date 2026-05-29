@@ -15,12 +15,6 @@
 #define CONNECT_TIMEOUT_SECONDS 5
 #define CA_CERT_FILE "certs/ca.crt"
 
-typedef struct {
-    int socket_fd;
-    SSL* ssl;
-    SSL_CTX* ssl_ctx;
-} ssl_connection_t;
-
 ssl_connection_t* connect_server_ssl(
     const char *ip,
     int port
@@ -145,6 +139,13 @@ ssl_connection_t* connect_server_ssl(
     }
 
     ssl_connection_t* conn = malloc(sizeof(ssl_connection_t));
+    if(!conn)
+    {
+        close(sock);
+        ssl_cleanup(ssl, ssl_ctx);
+        return NULL;
+    }
+
     conn->socket_fd = sock;
     conn->ssl = ssl;
     conn->ssl_ctx = ssl_ctx;
