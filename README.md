@@ -9,6 +9,7 @@ Projeto acadêmico desenvolvido em C no Debian Linux.
 - pthread
 - Newt
 - SQLite3
+- OpenSSL (SSL/TLS 1.2/1.3)
 
 ## Instalação
 
@@ -24,9 +25,21 @@ git clone https://github.com/Adrian-shift/Sistema-Votacao-C.git
 cd Sistema-Votacao-C
 chmod +x scripts/install_dependencies.sh #Permissão para o script
 ./scripts/install_dependencies.sh
+sudo apt install libssl-dev # OpenSSL para criptografia
 ```
 
---- 
+### Gerar certificados SSL/TLS
+
+```bash
+chmod +x scripts/generate_certs.sh
+./scripts/generate_certs.sh
+```
+
+Isso cria:
+- `server/certs/server.crt` e `server/certs/server.key` (certificado do servidor)
+- `client/certs/ca.crt` (certificado da CA para verificação)
+
+---
 
 # Servidor
 
@@ -67,12 +80,14 @@ make run
 Servidor:
 
 ```bash
+cd server
 make run
 ```
 
 Cliente:
 
 ```bash
+cd client
 make run
 ```
 
@@ -87,9 +102,21 @@ Use:
 # Funcionalidades
 
 - Dashboard Newt
-- TCP/IP
+- TCP/IP com SSL/TLS 1.2/1.3
 - Multithreading
 - SQLite
 - ACK/NACK
 - Recibos
 - Controle duplicidade
+- Criptografia de ponta a ponta (OpenSSL)
+
+---
+
+# Criptografia
+
+O sistema usa OpenSSL para criptografia de ponta a ponta:
+
+- **TLS 1.2/1.3**: Protocolos modernos e seguros
+- **Verificação de certificados**: Cliente valida o certificado do servidor
+- **Auto-assinado**: Certificados auto-assinados para ambiente de teste
+- **Tráfego criptografado**: Todos os votos são enviados via canal seguro

@@ -13,28 +13,44 @@
 
 #include "../protocol/protocol.h"
 
+#include "ssl_wrapper.h"
+
 #define PORT 8080
+#define CERT_FILE "certs/server.crt"
+#define KEY_FILE "certs/server.key"
+
+typedef struct {
+    int client_socket;
+    SSL_CTX* ssl_ctx;
+} client_args_t;
 
 void* handle_client(void* arg)
 {
-    int client_socket = *(int*)arg;
+    client_args_t* args = (client_args_t*)arg;
+    int client_socket = args->client_socket;
+    SSL_CTX* ssl_ctx = args->ssl_ctx;
+    free(args);
 
-    free(arg);
+    SSL* ssl = ssl_accept(ssl_ctx, client_socket);
+    if(!ssl)
+    {
+        close(client_socket);
+        add_log("[ERRO] Falha no handshake SSL");
+        return NULL;
+    }
 
     char buffer[1024];
-
     int bytes;
 
     server_state.connected_clients++;
 
-    add_log("\n[INFO] Novo cliente conectado");
+    add_log("\n[INFO] Novo cliente conectado (SSL)");
 
-	while((bytes = recv(client_socket, buffer, sizeof(buffer)-1, 0)) > 0)
+	while((bytes = ssl_recv(ssl, buffer, sizeof(buffer)-1)) > 0)
 	{
 		buffer[bytes] = '\0';
 
 		char voter_id[64];
-
 		char candidate[64];
 
 		sscanf(
@@ -58,11 +74,10 @@ void* handle_client(void* arg)
 
 		if(!voter_exists(voter_id))
 		{
-			send(
-				client_socket,
+			ssl_send(
+				ssl,
 				"NACK ELEITOR_INVALIDO\n",
-				23,
-				0
+				23
 			);
 
 			continue;
@@ -70,11 +85,10 @@ void* handle_client(void* arg)
 
 		if(has_voted(voter_id))
 		{
-			send(
-				client_socket,
+			ssl_send(
+				ssl,
 				"NACK JA_VOTOU\n",
-				16,
-				0
+				16
 			);
 
 			continue;
@@ -101,26 +115,25 @@ void* handle_client(void* arg)
 				receipt
 			);
 
-			send(
-				client_socket,
+			ssl_send(
+				ssl,
 				response,
-				strlen(response),
-				0
+				strlen(response)
 			);
 
 			add_log("[INFO] Voto registrado");
 		}
 		else
 		{
-			send(
-				client_socket,
+			ssl_send(
+				ssl,
 				"NACK ERRO_DB\n",
-				14,
-				0
+				14
 			);
 		}
 	}
 
+    ssl_cleanup(ssl, NULL);
     close(client_socket);
 
     server_state.connected_clients--;
@@ -132,6 +145,15 @@ void* handle_client(void* arg)
 
 void* start_server(void* arg)
 {
+    SSL_CTX* ssl_ctx = init_server_ssl(CERT_FILE, KEY_FILE);
+    if(!ssl_ctx)
+    {
+        add_log("[ERRO] Falha ao inicializar SSL");
+        return NULL;
+    }
+
+    add_log("[INFO] SSL/TLS inicializado");
+
     int server_socket;
 
     struct sockaddr_in server_addr;
@@ -145,6 +167,7 @@ void* start_server(void* arg)
     if(server_socket < 0)
     {
         add_log("[ERRO] Falha ao criar socket");
+        ssl_cleanup(NULL, ssl_ctx);
         return NULL;
     }
 
@@ -161,16 +184,20 @@ void* start_server(void* arg)
     ) < 0)
     {
         add_log("[ERRO] Bind falhou");
+        close(server_socket);
+        ssl_cleanup(NULL, ssl_ctx);
         return NULL;
     }
 
     if(listen(server_socket, 10) < 0)
     {
         add_log("[ERRO] Listen falhou");
-        return NULL;;
+        close(server_socket);
+        ssl_cleanup(NULL, ssl_ctx);
+        return NULL;
     }
 
-    add_log("[INFO] Servidor TCP iniciado");
+    add_log("[INFO] Servidor TCP iniciado na porta 8080 (SSL/TLS)");
 
     while(1)
     {
@@ -194,18 +221,21 @@ void* start_server(void* arg)
 
         pthread_t client_thread;
 
-        int* pclient = malloc(sizeof(int));
-
-        *pclient = client_socket;
+        client_args_t* args = malloc(sizeof(client_args_t));
+        args->client_socket = client_socket;
+        args->ssl_ctx = ssl_ctx;
 
         pthread_create(
             &client_thread,
             NULL,
             handle_client,
-            pclient
+            args
         );
 
         pthread_detach(client_thread);
     }
+
+    close(server_socket);
+    ssl_cleanup(NULL, ssl_ctx);
     return NULL;
 }

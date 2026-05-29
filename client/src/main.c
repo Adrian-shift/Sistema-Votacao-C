@@ -34,15 +34,15 @@ int main()
         voter_id
     );
 
-    int sock =
-        connect_server(ip, port);
+    ssl_connection_t* conn =
+        connect_server_ssl(ip, port);
 
-    if(sock < 0)
+    if(!conn)
     {
         newtWinMessage(
             "Erro",
             "OK",
-            "Falha ao conectar"
+            "Falha ao conectar (SSL)"
         );
 
         newtFinished();
@@ -53,7 +53,7 @@ int main()
     show_voting_menu(candidate);
 
     if(send_vote(
-        sock,
+        conn,
         voter_id,
         candidate,
         response
@@ -70,7 +70,7 @@ int main()
         );
     }
 
-    close(sock);
+    close_ssl_connection(conn);
 
     newtFinished();
 

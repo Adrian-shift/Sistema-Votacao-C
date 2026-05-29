@@ -10,10 +10,18 @@
 #include <arpa/inet.h>
 
 #include "client_socket.h"
+#include "ssl_wrapper.h"
 
 #define CONNECT_TIMEOUT_SECONDS 5
+#define CA_CERT_FILE "certs/ca.crt"
 
-int connect_server(
+typedef struct {
+    int socket_fd;
+    SSL* ssl;
+    SSL_CTX* ssl_ctx;
+} ssl_connection_t;
+
+ssl_connection_t* connect_server_ssl(
     const char *ip,
     int port
 )
@@ -30,7 +38,7 @@ int connect_server(
 
     if(sock < 0)
     {
-        return -1;
+        return NULL;
     }
 
     server_addr.sin_family = AF_INET;
@@ -44,7 +52,7 @@ int connect_server(
     ) != 1)
     {
         close(sock);
-        return -1;
+        return NULL;
     }
 
     int flags = fcntl(sock, F_GETFL, 0);
@@ -52,13 +60,13 @@ int connect_server(
     if(flags < 0)
     {
         close(sock);
-        return -1;
+        return NULL;
     }
 
     if(fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
     {
         close(sock);
-        return -1;
+        return NULL;
     }
 
     int result = connect(
@@ -70,7 +78,7 @@ int connect_server(
     if(result < 0 && errno != EINPROGRESS)
     {
         close(sock);
-        return -1;
+        return NULL;
     }
 
     if(result < 0)
@@ -96,7 +104,7 @@ int connect_server(
         if(result <= 0)
         {
             close(sock);
-            return -1;
+            return NULL;
         }
 
         int socket_error = 0;
@@ -111,21 +119,62 @@ int connect_server(
         ) < 0 || socket_error != 0)
         {
             close(sock);
-            return -1;
+            return NULL;
         }
     }
 
     if(fcntl(sock, F_SETFL, flags) < 0)
     {
         close(sock);
-        return -1;
+        return NULL;
     }
 
-    return sock;
+    SSL_CTX* ssl_ctx = init_client_ssl(CA_CERT_FILE);
+    if(!ssl_ctx)
+    {
+        close(sock);
+        return NULL;
+    }
+
+    SSL* ssl = ssl_connect(ssl_ctx, sock);
+    if(!ssl)
+    {
+        close(sock);
+        ssl_cleanup(NULL, ssl_ctx);
+        return NULL;
+    }
+
+    ssl_connection_t* conn = malloc(sizeof(ssl_connection_t));
+    conn->socket_fd = sock;
+    conn->ssl = ssl;
+    conn->ssl_ctx = ssl_ctx;
+
+    return conn;
+}
+
+void close_ssl_connection(ssl_connection_t* conn)
+{
+    if(conn)
+    {
+        if(conn->ssl)
+        {
+            SSL_shutdown(conn->ssl);
+            SSL_free(conn->ssl);
+        }
+        if(conn->ssl_ctx)
+        {
+            SSL_CTX_free(conn->ssl_ctx);
+        }
+        if(conn->socket_fd >= 0)
+        {
+            close(conn->socket_fd);
+        }
+        free(conn);
+    }
 }
 
 int send_vote(
-    int socket_fd,
+    ssl_connection_t* conn,
     const char *voter_id,
     const char *candidate,
     char *response
@@ -141,18 +190,16 @@ int send_vote(
         candidate
     );
 
-    send(
-        socket_fd,
+    ssl_send(
+        conn->ssl,
         message,
-        strlen(message),
-        0
+        strlen(message)
     );
 
-    int bytes = recv(
-        socket_fd,
+    int bytes = ssl_recv(
+        conn->ssl,
         response,
-        255,
-        0
+        255
     );
 
     if(bytes <= 0)

@@ -2,10 +2,11 @@ CC=gcc
 
 CFLAGS=-Wall
 
-LIBS=-lnewt
+LIBS=-lnewt -lssl -lcrypto
 
 SRC=src/main.c \
     src/network/client_socket.c \
+    src/network/ssl_wrapper.c \
     src/ui/login.c \
     src/ui/voting.c \
     src/ui/receipt.c
