@@ -13,6 +13,10 @@
 
 #include "../protocol/protocol.h"
 
+#include "../security/rate_limit.h"
+#include "../security/secure_log.h"
+#include "../security/validation.h"
+
 #include "ssl_wrapper.h"
 
 #define PORT 8080
@@ -22,6 +26,7 @@
 typedef struct {
     int client_socket;
     SSL_CTX* ssl_ctx;
+    char client_ip[INET_ADDRSTRLEN];
 } client_args_t;
 
 void* handle_client(void* arg)
@@ -29,13 +34,33 @@ void* handle_client(void* arg)
     client_args_t* args = (client_args_t*)arg;
     int client_socket = args->client_socket;
     SSL_CTX* ssl_ctx = args->ssl_ctx;
+    char client_ip[INET_ADDRSTRLEN];
+
+    snprintf(
+        client_ip,
+        sizeof(client_ip),
+        "%s",
+        args->client_ip
+    );
+
     free(args);
 
     SSL* ssl = ssl_accept(ssl_ctx, client_socket);
     if(!ssl)
     {
         close(client_socket);
-        add_log("[ERRO] Falha no handshake SSL");
+        {
+            char log[256];
+
+            snprintf(
+                log,
+                sizeof(log),
+                "Falha no handshake SSL [%s]",
+                client_ip
+            );
+
+            security_log_event("SSL", log);
+        }
         return NULL;
     }
 
@@ -44,7 +69,18 @@ void* handle_client(void* arg)
 
     server_state.connected_clients++;
 
-    add_log("\n[INFO] Novo cliente conectado (SSL)");
+    {
+        char log[256];
+
+        snprintf(
+            log,
+            sizeof(log),
+            "\n[INFO] Novo cliente conectado (SSL) [%s]",
+            client_ip
+        );
+
+        add_log(log);
+    }
 
 	while((bytes = ssl_recv(ssl, buffer, sizeof(buffer)-1)) > 0)
 	{
@@ -53,12 +89,27 @@ void* handle_client(void* arg)
 		char voter_id[64];
 		char candidate[64];
 
-		sscanf(
+		if(!parse_vote_message(
 			buffer,
-			"%63s %63s",
 			voter_id,
-			candidate
-		);
+			sizeof(voter_id),
+			candidate,
+			sizeof(candidate)
+		))
+		{
+			ssl_send(
+				ssl,
+				"NACK FORMATO_INVALIDO\n",
+				22
+			);
+
+			security_log_event(
+				"VALIDACAO",
+				"Mensagem de voto invalida"
+			);
+
+			continue;
+		}
 
 		char log[256];
 
@@ -80,6 +131,11 @@ void* handle_client(void* arg)
 				23
 			);
 
+			security_log_event(
+				"VALIDACAO",
+				"Eleitor invalido"
+			);
+
 			continue;
 		}
 
@@ -89,6 +145,11 @@ void* handle_client(void* arg)
 				ssl,
 				"NACK JA_VOTOU\n",
 				16
+			);
+
+			security_log_event(
+				"REGRA",
+				"Eleitor ja votou"
 			);
 
 			continue;
@@ -130,6 +191,11 @@ void* handle_client(void* arg)
 				"NACK ERRO_DB\n",
 				14
 			);
+
+			security_log_event(
+				"DB",
+				"Falha ao salvar voto"
+			);
 		}
 	}
 
@@ -137,8 +203,20 @@ void* handle_client(void* arg)
     close(client_socket);
 
     server_state.connected_clients--;
+    server_state.active_threads--;
 
-    add_log("[INFO] Cliente desconectado");
+    {
+        char log[256];
+
+        snprintf(
+            log,
+            sizeof(log),
+            "[INFO] Cliente desconectado [%s]",
+            client_ip
+        );
+
+        add_log(log);
+    }
 
     return NULL;
 }
@@ -219,18 +297,62 @@ void* start_server(void* arg)
             continue;
         }
 
+        char client_ip[INET_ADDRSTRLEN];
+        if(!inet_ntop(
+            AF_INET,
+            &client_addr.sin_addr,
+            client_ip,
+            sizeof(client_ip)
+        ))
+        {
+            snprintf(
+                client_ip,
+                sizeof(client_ip),
+                "desconhecido"
+            );
+        }
+
+        if(!rate_limit_allow(client_ip))
+        {
+            security_log_event("RATE_LIMIT", client_ip);
+            close(client_socket);
+            continue;
+        }
+
         pthread_t client_thread;
 
         client_args_t* args = malloc(sizeof(client_args_t));
+        if(!args)
+        {
+            close(client_socket);
+            security_log_event("MEMORIA", "Falha ao alocar argumentos do cliente");
+            continue;
+        }
+
         args->client_socket = client_socket;
         args->ssl_ctx = ssl_ctx;
+        snprintf(
+            args->client_ip,
+            sizeof(args->client_ip),
+            "%s",
+            client_ip
+        );
 
-        pthread_create(
+        server_state.active_threads++;
+
+        if(pthread_create(
             &client_thread,
             NULL,
             handle_client,
             args
-        );
+        ) != 0)
+        {
+            server_state.active_threads--;
+            close(client_socket);
+            security_log_event("THREAD", "Falha ao criar thread do cliente");
+            free(args);
+            continue;
+        }
 
         pthread_detach(client_thread);
     }

@@ -10,6 +10,10 @@ SRC=src/main.c \
     src/models/server_state.c \
     src/network/server_socket.c \
     src/network/ssl_wrapper.c \
+    src/security/auth.c \
+    src/security/rate_limit.c \
+    src/security/secure_log.c \
+    src/security/validation.c \
     src/database/database.c \
     src/protocol/protocol.c
 

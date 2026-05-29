@@ -6,6 +6,7 @@
 #include "../database/database.h"
 #include "../models/server_state.h"
 #include "../network/server_socket.h"
+#include "../security/auth.h"
 #include "dashboard.h"
 #include "results.h"
 
@@ -20,6 +21,14 @@ void show_popup(char* title, char* message)
     );
 }
 
+static void show_access_denied()
+{
+    show_popup(
+        "Acesso negado",
+        "Senha administrativa incorreta"
+    );
+}
+
 void update_dashboard_text(
     newtComponent status_box,
     newtComponent logs_box
@@ -28,6 +37,7 @@ void update_dashboard_text(
     char status[512];
     char logs[8192] = "";
     int total_votes = count_votes();
+    size_t used = 0;
 
     snprintf(
         status,
@@ -42,8 +52,19 @@ void update_dashboard_text(
 
     for(int i = 0; i < server_state.log_count; i++)
     {
-        strcat(logs, server_state.logs[i]);
-        strcat(logs, "\n");
+        int written = snprintf(
+            logs + used,
+            sizeof(logs) - used,
+            "%s\n",
+            server_state.logs[i]
+        );
+
+        if(written < 0 || (size_t)written >= sizeof(logs) - used)
+        {
+            break;
+        }
+
+        used += (size_t)written;
     }
 
     newtTextboxSetText(
@@ -187,42 +208,84 @@ void start_dashboard()
         {
             if(exit_status.u.key == NEWT_KEY_F1)
             {
-                show_results();
+                if(admin_action_allowed("Resultados"))
+                {
+                    show_results();
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
             else if(exit_status.u.key == NEWT_KEY_F2)
             {
-                show_popup(
-                    "Logs",
-                    "Visualizacao detalhada de logs"
-                );
+                if(admin_action_allowed("Logs"))
+                {
+                    show_popup(
+                        "Logs",
+                        "Visualizacao detalhada de logs"
+                    );
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
             else if(exit_status.u.key == NEWT_KEY_F3)
             {
-                show_popup(
-                    "Clientes",
-                    "Clientes conectados atualmente"
-                );
+                if(admin_action_allowed("Clientes"))
+                {
+                    show_popup(
+                        "Clientes",
+                        "Clientes conectados atualmente"
+                    );
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
         }
         else if(exit_status.reason == NEWT_EXIT_COMPONENT)
         {
             if(exit_status.u.co == btn_reports)
             {
-                show_results();
+                if(admin_action_allowed("Resultados"))
+                {
+                    show_results();
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
             else if(exit_status.u.co == btn_logs)
             {
-                show_popup(
-                    "Logs",
-                    "Visualizacao detalhada de logs"
-                );
+                if(admin_action_allowed("Logs"))
+                {
+                    show_popup(
+                        "Logs",
+                        "Visualizacao detalhada de logs"
+                    );
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
             else if(exit_status.u.co == btn_clients)
             {
-                show_popup(
-                    "Clientes",
-                    "Clientes conectados atualmente"
-                );
+                if(admin_action_allowed("Clientes"))
+                {
+                    show_popup(
+                        "Clientes",
+                        "Clientes conectados atualmente"
+                    );
+                }
+                else
+                {
+                    show_access_denied();
+                }
             }
             else if(exit_status.u.co == btn_exit)
             {

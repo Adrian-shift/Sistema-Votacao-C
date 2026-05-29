@@ -35,6 +35,7 @@ void show_results()
     char candidates[16][128];
     int counts[16];
     char text[2048] = "";
+    size_t used = 0;
 
     int total_results = get_vote_results(
         candidates,
@@ -51,11 +52,19 @@ void show_results()
         count_votes()
     );
 
-    strcat(text, header);
+    used = (size_t)snprintf(text, sizeof(text), "%s", header);
+    if(used >= sizeof(text))
+    {
+        used = sizeof(text) - 1;
+    }
 
     if(total_results == 0)
     {
-        strcat(text, "Nenhum voto registrado ainda.\n");
+        snprintf(
+            text + used,
+            sizeof(text) - used,
+            "Nenhum voto registrado ainda.\n"
+        );
     }
     else
     {
@@ -71,7 +80,19 @@ void show_results()
                 counts[i]
             );
 
-            strcat(text, line);
+            int written = snprintf(
+                text + used,
+                sizeof(text) - used,
+                "%s",
+                line
+            );
+
+            if(written < 0 || (size_t)written >= sizeof(text) - used)
+            {
+                break;
+            }
+
+            used += (size_t)written;
         }
     }
 

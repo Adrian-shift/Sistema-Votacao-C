@@ -43,6 +43,12 @@ Isso cria:
 
 # Servidor
 
+Opcionalmente, defina uma senha para liberar as acoes administrativas da dashboard:
+
+```bash
+export VOTACAO_ADMIN_PASSWORD="sua_senha"
+```
+
 ## Compilar
 
 ```bash
