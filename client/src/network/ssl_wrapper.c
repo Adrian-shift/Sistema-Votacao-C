@@ -90,6 +90,22 @@ static void capture_ssl_handshake_error(
         return;
     }
 
+    {
+        long verify_result = SSL_get_verify_result(ssl);
+
+        if(verify_result != X509_V_OK)
+        {
+            snprintf(
+                error_buffer,
+                error_buffer_size,
+                "%s: %s",
+                fallback_message,
+                X509_verify_cert_error_string(verify_result)
+            );
+            return;
+        }
+    }
+
     if(ssl_error == SSL_ERROR_SYSCALL && errno != 0)
     {
         snprintf(
