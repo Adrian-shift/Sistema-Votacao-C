@@ -7,6 +7,8 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SERVER_CERT_DIR="$ROOT_DIR/server/certs"
 CLIENT_CERT_DIR="$ROOT_DIR/client/certs"
+SERVER_DNS="${SERVER_DNS:-}"
+SERVER_IP="${SERVER_IP:-}"
 
 echo "Gerando certificados SSL/TLS para o sistema de votacao..."
 
@@ -58,6 +60,14 @@ subjectAltName = @alt_names
 DNS.1 = localhost
 IP.1 = 127.0.0.1
 EOF
+
+if [[ -n "$SERVER_DNS" && "$SERVER_DNS" != "localhost" ]]; then
+    echo "DNS.2 = $SERVER_DNS" >> "$SERVER_CERT_DIR/server.cnf"
+fi
+
+if [[ -n "$SERVER_IP" && "$SERVER_IP" != "127.0.0.1" ]]; then
+    echo "IP.2 = $SERVER_IP" >> "$SERVER_CERT_DIR/server.cnf"
+fi
 
 openssl genrsa -out "$SERVER_CERT_DIR/ca.key" 4096
 

@@ -143,6 +143,17 @@ static int resolve_runtime_path(
         return 0;
     }
 
+    if(relative_path[0] == '/')
+    {
+        if(access(relative_path, R_OK) == 0)
+        {
+            snprintf(resolved_path, resolved_path_size, "%s", relative_path);
+            return 1;
+        }
+
+        return 0;
+    }
+
     len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
     if(len < 0)
     {
