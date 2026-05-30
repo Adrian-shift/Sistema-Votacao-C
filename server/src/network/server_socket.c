@@ -1,18 +1,14 @@
+#include <arpa/inet.h>
+
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include <arpa/inet.h>
-
-#include <pthread.h>
-
-#include "../models/server_state.h"
-
 #include "../database/database.h"
-
+#include "../models/server_state.h"
 #include "../protocol/protocol.h"
-
 #include "../security/rate_limit.h"
 #include "../security/secure_log.h"
 #include "../security/validation.h"
@@ -45,29 +41,41 @@ void* handle_client(void* arg)
 
     free(args);
 
-    SSL* ssl = ssl_accept(ssl_ctx, client_socket);
+    char ssl_error[256];
+    SSL* ssl = ssl_accept(
+        ssl_ctx,
+        client_socket,
+        ssl_error,
+        sizeof(ssl_error)
+    );
     if(!ssl)
     {
         close(client_socket);
+
         {
             char log[256];
 
             snprintf(
                 log,
                 sizeof(log),
-                "Falha no handshake SSL [%s]",
-                client_ip
+                "Falha no handshake SSL [%s]%s%s",
+                client_ip,
+                ssl_error[0] ? ": " : "",
+                ssl_error[0] ? ssl_error : ""
             );
 
             security_log_event("SSL", log);
         }
+
         return NULL;
     }
 
     char buffer[1024];
     int bytes;
 
+    server_state_lock();
     server_state.connected_clients++;
+    server_state_unlock();
 
     {
         char log[256];
@@ -82,128 +90,132 @@ void* handle_client(void* arg)
         add_log(log);
     }
 
-	while((bytes = ssl_recv(ssl, buffer, sizeof(buffer)-1)) > 0)
-	{
-		buffer[bytes] = '\0';
+    while((bytes = ssl_recv(ssl, buffer, sizeof(buffer) - 1)) > 0)
+    {
+        buffer[bytes] = '\0';
 
-		char voter_id[64];
-		char candidate[64];
+        char voter_id[64];
+        char candidate[64];
 
-		if(!parse_vote_message(
-			buffer,
-			voter_id,
-			sizeof(voter_id),
-			candidate,
-			sizeof(candidate)
-		))
-		{
-			ssl_send(
-				ssl,
-				"NACK FORMATO_INVALIDO\n",
-				22
-			);
+        if(!parse_vote_message(
+            buffer,
+            voter_id,
+            sizeof(voter_id),
+            candidate,
+            sizeof(candidate)
+        ))
+        {
+            ssl_send(
+                ssl,
+                "NACK FORMATO_INVALIDO\n",
+                22
+            );
 
-			security_log_event(
-				"VALIDACAO",
-				"Mensagem de voto invalida"
-			);
+            security_log_event(
+                "VALIDACAO",
+                "Mensagem de voto invalida"
+            );
 
-			continue;
-		}
+            continue;
+        }
 
-		char log[256];
+        char log[256];
 
-		snprintf(
-			log,
-			sizeof(log),
-			"[VOTO] Eleitor %s -> %s",
-			voter_id,
-			candidate
-		);
+        snprintf(
+            log,
+            sizeof(log),
+            "[VOTO] Eleitor %s -> %s",
+            voter_id,
+            candidate
+        );
 
-		add_log(log);
+        add_log(log);
 
-		if(!voter_exists(voter_id))
-		{
-			ssl_send(
-				ssl,
-				"NACK ELEITOR_INVALIDO\n",
-				23
-			);
+        if(!voter_exists(voter_id))
+        {
+            ssl_send(
+                ssl,
+                "NACK ELEITOR_INVALIDO\n",
+                23
+            );
 
-			security_log_event(
-				"VALIDACAO",
-				"Eleitor invalido"
-			);
+            security_log_event(
+                "VALIDACAO",
+                "Eleitor invalido"
+            );
 
-			continue;
-		}
+            continue;
+        }
 
-		if(has_voted(voter_id))
-		{
-			ssl_send(
-				ssl,
-				"NACK JA_VOTOU\n",
-				16
-			);
+        if(has_voted(voter_id))
+        {
+            ssl_send(
+                ssl,
+                "NACK JA_VOTOU\n",
+                16
+            );
 
-			security_log_event(
-				"REGRA",
-				"Eleitor ja votou"
-			);
+            security_log_event(
+                "REGRA",
+                "Eleitor ja votou"
+            );
 
-			continue;
-		}
+            continue;
+        }
 
-		char receipt[128];
+        char receipt[128];
 
-		generate_receipt(receipt);
+        generate_receipt(receipt);
 
-		if(save_vote(
-			voter_id,
-			candidate,
-			receipt
-		))
-		{
-			server_state.total_votes++;
+        if(save_vote(
+            voter_id,
+            candidate,
+            receipt
+        ))
+        {
+            server_state_lock();
+            server_state.total_votes++;
+            server_state_unlock();
 
-			char response[256];
+            char response[256];
 
-			snprintf(
-				response,
-				sizeof(response),
-				"ACK %s\n",
-				receipt
-			);
+            snprintf(
+                response,
+                sizeof(response),
+                "ACK %s\n",
+                receipt
+            );
 
-			ssl_send(
-				ssl,
-				response,
-				strlen(response)
-			);
+            ssl_send(
+                ssl,
+                response,
+                strlen(response)
+            );
 
-			add_log("[INFO] Voto registrado");
-		}
-		else
-		{
-			ssl_send(
-				ssl,
-				"NACK ERRO_DB\n",
-				14
-			);
+            add_log("[INFO] Voto registrado");
+        }
+        else
+        {
+            ssl_send(
+                ssl,
+                "NACK ERRO_DB\n",
+                14
+            );
 
-			security_log_event(
-				"DB",
-				"Falha ao salvar voto"
-			);
-		}
-	}
+            security_log_event(
+                "DB",
+                "Falha ao salvar voto"
+            );
+        }
+    }
 
     ssl_cleanup(ssl, NULL);
     close(client_socket);
 
+    server_state_lock();
     server_state.connected_clients--;
     server_state.active_threads--;
+    server_state_unlock();
 
     {
         char log[256];
@@ -223,10 +235,29 @@ void* handle_client(void* arg)
 
 void* start_server(void* arg)
 {
-    SSL_CTX* ssl_ctx = init_server_ssl(CERT_FILE, KEY_FILE);
+    char ssl_error[256];
+    SSL_CTX* ssl_ctx = init_server_ssl(
+        CERT_FILE,
+        KEY_FILE,
+        ssl_error,
+        sizeof(ssl_error)
+    );
     if(!ssl_ctx)
     {
-        add_log("[ERRO] Falha ao inicializar SSL");
+        {
+            char log[256];
+
+            snprintf(
+                log,
+                sizeof(log),
+                "Falha ao inicializar SSL/TLS%s%s",
+                ssl_error[0] ? ": " : "",
+                ssl_error[0] ? ssl_error : ""
+            );
+
+            security_log_event("SSL", log);
+        }
+
         return NULL;
     }
 
@@ -338,7 +369,9 @@ void* start_server(void* arg)
             client_ip
         );
 
+        server_state_lock();
         server_state.active_threads++;
+        server_state_unlock();
 
         if(pthread_create(
             &client_thread,
@@ -347,7 +380,9 @@ void* start_server(void* arg)
             args
         ) != 0)
         {
+            server_state_lock();
             server_state.active_threads--;
+            server_state_unlock();
             close(client_socket);
             security_log_event("THREAD", "Falha ao criar thread do cliente");
             free(args);

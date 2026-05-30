@@ -37,20 +37,18 @@ void update_dashboard_text(
     char status[512];
     char logs[8192] = "";
     int total_votes = count_votes();
+    int connected_clients;
+    int active_threads;
+    int log_count;
     size_t used = 0;
 
-    snprintf(
-        status,
-        sizeof(status),
-        "Clientes: %d\n\n"
-        "Votos: %d\n\n"
-        "Threads: %d\n",
-        server_state.connected_clients,
-        total_votes,
-        server_state.active_threads
-    );
+    server_state_lock();
 
-    for(int i = 0; i < server_state.log_count; i++)
+    connected_clients = server_state.connected_clients;
+    active_threads = server_state.active_threads;
+    log_count = server_state.log_count;
+
+    for(int i = 0; i < log_count; i++)
     {
         int written = snprintf(
             logs + used,
@@ -66,6 +64,19 @@ void update_dashboard_text(
 
         used += (size_t)written;
     }
+
+    server_state_unlock();
+
+    snprintf(
+        status,
+        sizeof(status),
+        "Clientes: %d\n\n"
+        "Votos: %d\n\n"
+        "Threads: %d\n",
+        connected_clients,
+        total_votes,
+        active_threads
+    );
 
     newtTextboxSetText(
         status_box,

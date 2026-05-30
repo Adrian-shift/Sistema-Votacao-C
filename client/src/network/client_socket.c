@@ -123,14 +123,24 @@ ssl_connection_t* connect_server_ssl(
         return NULL;
     }
 
-    SSL_CTX* ssl_ctx = init_client_ssl(CA_CERT_FILE);
+    char ssl_error[256];
+    SSL_CTX* ssl_ctx = init_client_ssl(
+        CA_CERT_FILE,
+        ssl_error,
+        sizeof(ssl_error)
+    );
     if(!ssl_ctx)
     {
         close(sock);
         return NULL;
     }
 
-    SSL* ssl = ssl_connect(ssl_ctx, sock);
+    SSL* ssl = ssl_connect(
+        ssl_ctx,
+        sock,
+        ssl_error,
+        sizeof(ssl_error)
+    );
     if(!ssl)
     {
         close(sock);
