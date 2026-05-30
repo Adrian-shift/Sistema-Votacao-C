@@ -13,7 +13,21 @@
 #include "ssl_wrapper.h"
 
 #define CONNECT_TIMEOUT_SECONDS 5
-#define DEFAULT_CA_CERT_FILE "certs/ca.crt"
+#define DEFAULT_CA_CERT_FILE "../certs/ca.crt"
+
+static int is_ip_address(const char *value)
+{
+    struct in_addr addr4;
+    struct in6_addr addr6;
+
+    if(!value || value[0] == '\0')
+    {
+        return 0;
+    }
+
+    return inet_pton(AF_INET, value, &addr4) == 1 ||
+           inet_pton(AF_INET6, value, &addr6) == 1;
+}
 
 static void set_error_message(
     char *error_buffer,
@@ -210,6 +224,8 @@ ssl_connection_t* connect_server_ssl(
     SSL* ssl = ssl_connect(
         ssl_ctx,
         sock,
+        ip,
+        is_ip_address(ip),
         error_buffer,
         error_buffer_size
     );

@@ -7,6 +7,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <openssl/x509v3.h>
+
 #ifndef PATH_MAX
 #define PATH_MAX 4096
 #endif
@@ -78,18 +80,6 @@ static void capture_ssl_handshake_error(
     }
 
     ssl_error = SSL_get_error(ssl, result);
-    error_code = ERR_get_error();
-
-    if(error_code != 0)
-    {
-        ERR_error_string_n(
-            error_code,
-            error_buffer,
-            error_buffer_size
-        );
-        return;
-    }
-
     {
         long verify_result = SSL_get_verify_result(ssl);
 
@@ -104,6 +94,18 @@ static void capture_ssl_handshake_error(
             );
             return;
         }
+    }
+
+    error_code = ERR_get_error();
+
+    if(error_code != 0)
+    {
+        ERR_error_string_n(
+            error_code,
+            error_buffer,
+            error_buffer_size
+        );
+        return;
     }
 
     if(ssl_error == SSL_ERROR_SYSCALL && errno != 0)
@@ -125,6 +127,70 @@ static void capture_ssl_handshake_error(
         fallback_message,
         ssl_error
     );
+}
+
+static int configure_peer_verification(
+    SSL* ssl,
+    const char* peer_name,
+    int peer_is_ip,
+    char* error_buffer,
+    size_t error_buffer_size
+)
+{
+    X509_VERIFY_PARAM* param;
+
+    if(!ssl || !peer_name || peer_name[0] == '\0')
+    {
+        return 1;
+    }
+
+    param = SSL_get0_param(ssl);
+    if(!param)
+    {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao configurar verificacao do servidor"
+        );
+        return 0;
+    }
+
+    if(peer_is_ip)
+    {
+        if(X509_VERIFY_PARAM_set1_ip_asc(param, peer_name) != 1)
+        {
+            set_error_message(
+                error_buffer,
+                error_buffer_size,
+                "Falha ao validar o endereco IP do servidor"
+            );
+            return 0;
+        }
+
+        return 1;
+    }
+
+    if(X509_VERIFY_PARAM_set1_host(param, peer_name, 0) != 1)
+    {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao validar o nome do servidor"
+        );
+        return 0;
+    }
+
+    if(SSL_set_tlsext_host_name(ssl, peer_name) != 1)
+    {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao configurar SNI"
+        );
+        return 0;
+    }
+
+    return 1;
 }
 
 static int resolve_runtime_path(
@@ -269,17 +335,21 @@ SSL_CTX* init_client_ssl(
 SSL* ssl_connect(
     SSL_CTX* ctx,
     int socket_fd,
+    const char* peer_name,
+    int peer_is_ip,
     char* error_buffer,
     size_t error_buffer_size
 )
 {
-    SSL* ssl = SSL_new(ctx);
-    int result;
-
     if(error_buffer && error_buffer_size > 0)
     {
         error_buffer[0] = '\0';
     }
+
+    ERR_clear_error();
+
+    SSL* ssl = SSL_new(ctx);
+    int result;
 
     if(!ssl)
     {
@@ -292,6 +362,18 @@ SSL* ssl_connect(
     }
 
     SSL_set_fd(ssl, socket_fd);
+
+    if(!configure_peer_verification(
+        ssl,
+        peer_name,
+        peer_is_ip,
+        error_buffer,
+        error_buffer_size
+    ))
+    {
+        SSL_free(ssl);
+        return NULL;
+    }
 
     result = SSL_connect(ssl);
 

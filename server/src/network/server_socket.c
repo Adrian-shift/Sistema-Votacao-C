@@ -16,8 +16,8 @@
 #include "ssl_wrapper.h"
 
 #define PORT 8080
-#define DEFAULT_CERT_FILE "certs/server.crt"
-#define DEFAULT_KEY_FILE "certs/server.key"
+#define DEFAULT_CERT_FILE "../certs/server.crt"
+#define DEFAULT_KEY_FILE "../certs/server.key"
 
 typedef struct {
     int client_socket;

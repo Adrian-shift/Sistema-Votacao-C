@@ -291,13 +291,15 @@ SSL* ssl_accept(
     size_t error_buffer_size
 )
 {
-    SSL* ssl = SSL_new(ctx);
-    int result;
-
     if(error_buffer && error_buffer_size > 0)
     {
         error_buffer[0] = '\0';
     }
+
+    ERR_clear_error();
+
+    SSL* ssl = SSL_new(ctx);
+    int result;
 
     if(!ssl)
     {

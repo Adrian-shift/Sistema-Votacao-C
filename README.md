@@ -32,12 +32,14 @@ chmod +x scripts/install_dependencies.sh # Permissão para o script
 
 ```bash
 chmod +x scripts/generate_certs.sh
-./scripts/generate_certs.sh # OpenSSL para criptografia
+SERVER_IP=192.168.101.104 ./scripts/generate_certs.sh
 ```
 
 Isso cria:
-- `server/certs/server.crt` e `server/certs/server.key` (certificado do servidor)
-- `client/certs/ca.crt` (certificado da CA para verificação)
+- `certs/server.crt` e `certs/server.key` (certificado e chave do servidor)
+- `certs/ca.crt` (CA confiável usada pelo cliente)
+
+Use o mesmo IP ou nome que o cliente vai digitar no campo de conexão. Se o cliente conectar por `192.168.101.104`, esse endereço precisa entrar no `SERVER_IP` na geração.
 
 ---
 

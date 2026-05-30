@@ -13,6 +13,8 @@ SSL_CTX* init_client_ssl(
 SSL* ssl_connect(
     SSL_CTX* ctx,
     int socket_fd,
+    const char* peer_name,
+    int peer_is_ip,
     char* error_buffer,
     size_t error_buffer_size
 );
