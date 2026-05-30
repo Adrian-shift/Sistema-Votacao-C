@@ -53,7 +53,7 @@ void* handle_client(void* arg)
         close(client_socket);
 
         {
-            char log[256];
+            char log[512];
 
             snprintf(
                 log,
@@ -78,7 +78,7 @@ void* handle_client(void* arg)
     server_state_unlock();
 
     {
-        char log[256];
+        char log[512];
 
         snprintf(
             log,
@@ -119,7 +119,7 @@ void* handle_client(void* arg)
             continue;
         }
 
-        char log[256];
+        char log[512];
 
         snprintf(
             log,
@@ -218,7 +218,7 @@ void* handle_client(void* arg)
     server_state_unlock();
 
     {
-        char log[256];
+        char log[512];
 
         snprintf(
             log,
@@ -245,7 +245,7 @@ void* start_server(void* arg)
     if(!ssl_ctx)
     {
         {
-            char log[256];
+            char log[512];
 
             snprintf(
                 log,
