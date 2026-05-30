@@ -1,17 +1,14 @@
 #include "ssl_wrapper.h"
 
-#include <limits.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
+#include <openssl/pem.h>
 #include <openssl/x509v3.h>
 
-#ifndef PATH_MAX
-#define PATH_MAX 4096
-#endif
+#include "embedded_ca.h"
 
 static void set_error_message(
     char* error_buffer,
@@ -193,77 +190,90 @@ static int configure_peer_verification(
     return 1;
 }
 
-static int resolve_runtime_path(
-    const char* relative_path,
-    char* resolved_path,
-    size_t resolved_path_size
+static int load_embedded_ca(
+    SSL_CTX* ctx,
+    char* error_buffer,
+    size_t error_buffer_size
 )
 {
-    char exe_path[PATH_MAX];
-    char candidate[PATH_MAX];
-    ssize_t len;
-    char* slash;
+    BIO* bio;
+    X509* ca_certificate;
+    X509_STORE* store;
 
-    if(!relative_path || !resolved_path || resolved_path_size == 0)
+    if(!ctx)
     {
         return 0;
     }
 
-    if(relative_path[0] == '/')
+    if(EMBEDDED_CA_PEM[0] == '\0')
     {
-        if(access(relative_path, R_OK) == 0)
-        {
-            snprintf(resolved_path, resolved_path_size, "%s", relative_path);
-            return 1;
-        }
-
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "CA embutida nao encontrada. Rode scripts/generate_certs.sh."
+        );
         return 0;
     }
 
-    len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
-    if(len < 0)
+    bio = BIO_new_mem_buf(EMBEDDED_CA_PEM, -1);
+    if(!bio)
     {
+        capture_openssl_error(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao criar BIO da CA embutida"
+        );
         return 0;
     }
 
-    exe_path[len] = '\0';
-
-    slash = strrchr(exe_path, '/');
-    if(!slash)
+    ca_certificate = PEM_read_bio_X509(bio, NULL, 0, NULL);
+    if(!ca_certificate)
     {
+        capture_openssl_error(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao ler a CA embutida"
+        );
+        BIO_free(bio);
         return 0;
     }
 
-    *slash = '\0';
-
-    if(snprintf(
-        candidate,
-        sizeof(candidate),
-        "%s/../%s",
-        exe_path,
-        relative_path
-    ) >= (int)sizeof(candidate))
+    store = SSL_CTX_get_cert_store(ctx);
+    if(!store)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao acessar armazenamento de certificados"
+        );
+        X509_free(ca_certificate);
+        BIO_free(bio);
         return 0;
     }
 
-    if(access(candidate, R_OK) != 0)
+    if(X509_STORE_add_cert(store, ca_certificate) != 1)
     {
+        capture_openssl_error(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao adicionar CA embutida"
+        );
+        X509_free(ca_certificate);
+        BIO_free(bio);
         return 0;
     }
 
-    snprintf(resolved_path, resolved_path_size, "%s", candidate);
+    X509_free(ca_certificate);
+    BIO_free(bio);
     return 1;
 }
 
 SSL_CTX* init_client_ssl(
-    const char* ca_cert_file,
     char* error_buffer,
     size_t error_buffer_size
 )
 {
     SSL_CTX* ctx;
-    char resolved_ca_cert_file[PATH_MAX];
 
     if(error_buffer && error_buffer_size > 0)
     {
@@ -290,44 +300,17 @@ SSL_CTX* init_client_ssl(
     SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
     SSL_CTX_set_max_proto_version(ctx, TLS1_3_VERSION);
 
-    if(ca_cert_file)
+    if(!load_embedded_ca(
+        ctx,
+        error_buffer,
+        error_buffer_size
+    ))
     {
-        if(!resolve_runtime_path(
-            ca_cert_file,
-            resolved_ca_cert_file,
-            sizeof(resolved_ca_cert_file)
-        ))
-        {
-            set_error_message(
-                error_buffer,
-                error_buffer_size,
-                "Certificado da CA nao encontrado"
-            );
-            SSL_CTX_free(ctx);
-            return NULL;
-        }
-
-        if(SSL_CTX_load_verify_locations(
-            ctx,
-            resolved_ca_cert_file,
-            NULL
-        ) <= 0)
-        {
-            capture_openssl_error(
-                error_buffer,
-                error_buffer_size,
-                "Falha ao carregar certificado da CA"
-            );
-            SSL_CTX_free(ctx);
-            return NULL;
-        }
-
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+        SSL_CTX_free(ctx);
+        return NULL;
     }
-    else
-    {
-        SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
-    }
+
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
 
     return ctx;
 }

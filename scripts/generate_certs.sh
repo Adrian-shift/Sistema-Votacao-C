@@ -113,6 +113,25 @@ openssl x509 \
     -extfile "$CERT_DIR/server.cnf" \
     -extensions v3_req
 
+CLIENT_EMBEDDED_CA_HEADER="$ROOT_DIR/client/src/network/embedded_ca.h"
+
+{
+    echo '#ifndef EMBEDDED_CA_H'
+    echo '#define EMBEDDED_CA_H'
+    echo ''
+    echo 'static const char EMBEDDED_CA_PEM[] ='
+    awk '
+        {
+            gsub(/\\/, "\\\\");
+            gsub(/"/, "\\\"");
+            printf "\"%s\\n\"\n", $0;
+        }
+    ' "$CERT_DIR/ca.crt"
+    echo ';'
+    echo ''
+    echo '#endif'
+} > "$CLIENT_EMBEDDED_CA_HEADER"
+
 rm -f \
     "$CERT_DIR/server.csr" \
     "$CERT_DIR/ca.srl" \
@@ -126,4 +145,4 @@ chmod 644 "$CERT_DIR/ca.crt"
 
 echo "Certificados gerados com sucesso!"
 echo "Servidor: certs/server.crt e certs/server.key"
-echo "CA confiavel do cliente: certs/ca.crt"
+echo "CA confiavel do cliente: compilada em client/src/network/embedded_ca.h"

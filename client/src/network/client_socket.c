@@ -13,7 +13,6 @@
 #include "ssl_wrapper.h"
 
 #define CONNECT_TIMEOUT_SECONDS 5
-#define DEFAULT_CA_CERT_FILE "../certs/ca.crt"
 
 static int is_ip_address(const char *value)
 {
@@ -204,7 +203,6 @@ ssl_connection_t* connect_server_ssl(
     }
 
     SSL_CTX* ssl_ctx = init_client_ssl(
-        DEFAULT_CA_CERT_FILE,
         error_buffer,
         error_buffer_size
     );

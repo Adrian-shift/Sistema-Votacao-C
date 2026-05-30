@@ -1,34 +1,19 @@
-# Sistema de Votação Distribuída
+# Sistema de Votacao Distribuida
 
-Projeto acadêmico desenvolvido em C no Debian Linux.
+Projeto academico em C para Debian Linux, com servidor e cliente em terminal.
 
-## Tecnologias
+## Dependencias
 
-- C
-- TCP/IP
-- pthread
+- GCC
+- make
+- OpenSSL
 - Newt
 - SQLite3
-- OpenSSL (SSL/TLS 1.2/1.3)
+- pthread
 
-## Instalação
+## Gerar certificados
 
-### Clonar
-
-```bash
-git clone https://github.com/Adrian-shift/Sistema-Votacao-C.git
-```
-
-### Instalar dependências
-
-```bash
-cd Sistema-Votacao-C
-
-chmod +x scripts/install_dependencies.sh # Permissão para o script
-./scripts/install_dependencies.sh
-```
-
-### Gerar certificados SSL/TLS
+Rode o gerador uma vez na maquina/build machine do servidor:
 
 ```bash
 chmod +x scripts/generate_certs.sh
@@ -36,95 +21,40 @@ SERVER_IP=192.168.101.104 ./scripts/generate_certs.sh
 ```
 
 Isso cria:
-- `certs/server.crt` e `certs/server.key` (certificado e chave do servidor)
-- `certs/ca.crt` (CA confiável usada pelo cliente)
+- `certs/server.crt`
+- `certs/server.key`
+- `certs/ca.crt`
+- `client/src/network/embedded_ca.h`
 
-Use o mesmo IP ou nome que o cliente vai digitar no campo de conexão. Se o cliente conectar por `192.168.101.104`, esse endereço precisa entrar no `SERVER_IP` na geração.
+O cliente nao precisa copiar `ca.crt`. A CA e embutida no executavel do cliente no momento da compilacao.
 
----
+Se o cliente conectar por IP, esse IP precisa entrar em `SERVER_IP` na geracao.
 
-# Servidor
-
-Opcionalmente, defina uma senha para liberar as acoes administrativas da dashboard:
-
-```bash
-export VOTACAO_ADMIN_PASSWORD="sua_senha"
-```
-
-## Compilar
+## Servidor
 
 ```bash
 cd server
 make
+./build/server
 ```
 
-## Executar
+## Cliente
 
-```bash
-make run
-```
-
----
-
-# Cliente
-
-## Compilar
+Depois de gerar os certificados no mesmo checkout:
 
 ```bash
 cd client
 make
+./build/client
 ```
 
-## Executar
+## Fluxo correto
 
-```bash
-make run
-```
+1. Gerar certificados uma vez.
+2. Compilar o cliente com `client/src/network/embedded_ca.h` gerado.
+3. Distribuir somente o executavel do cliente.
+4. O servidor continua usando `certs/server.crt` e `certs/server.key`; quando executado a partir de `server/build`, ele resolve isso como `../../certs/server.crt` e `../../certs/server.key`.
 
----
+## Observacao
 
-# Teste rápido
-
-Servidor:
-
-```bash
-cd server
-make run
-```
-
-Cliente:
-
-```bash
-cd client
-make run
-```
-
-Use:
-
-- IP: (da maquina servidor)
-- Porta: 8080
-- Eleitor: 101
-
----
-
-# Funcionalidades
-
-- Dashboard Newt
-- TCP/IP com SSL/TLS 1.2/1.3
-- Multithreading
-- SQLite
-- ACK/NACK
-- Recibos
-- Controle duplicidade
-- Criptografia de ponta a ponta (OpenSSL)
-
----
-
-# Criptografia
-
-O sistema usa OpenSSL para criptografia de ponta a ponta:
-
-- **TLS 1.2/1.3**: Protocolos modernos e seguros
-- **Verificação de certificados**: Cliente valida o certificado do servidor
-- **Auto-assinado**: Certificados auto-assinados para ambiente de teste
-- **Tráfego criptografado**: Todos os votos são enviados via canal seguro
+`server/src/security/validation.c` nao participa do problema de TLS. Ele valida o voto depois que o handshake SSL ja foi estabelecido.

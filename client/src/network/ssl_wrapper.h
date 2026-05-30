@@ -6,7 +6,6 @@
 #include <openssl/err.h>
 
 SSL_CTX* init_client_ssl(
-    const char* ca_cert_file,
     char* error_buffer,
     size_t error_buffer_size
 );
