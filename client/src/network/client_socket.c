@@ -203,15 +203,8 @@ ssl_connection_t* connect_server_ssl(
         return NULL;
     }
 
-    const char *ca_cert_file = getenv("VOTACAO_CA_FILE");
-
-    if(!ca_cert_file || ca_cert_file[0] == '\0')
-    {
-        ca_cert_file = DEFAULT_CA_CERT_FILE;
-    }
-
     SSL_CTX* ssl_ctx = init_client_ssl(
-        ca_cert_file,
+        DEFAULT_CA_CERT_FILE,
         error_buffer,
         error_buffer_size
     );

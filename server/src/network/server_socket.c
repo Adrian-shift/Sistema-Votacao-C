@@ -236,22 +236,10 @@ void* handle_client(void* arg)
 void* start_server(void* arg)
 {
     char ssl_error[256];
-    const char *cert_file = getenv("VOTACAO_SERVER_CERT");
-    const char *key_file = getenv("VOTACAO_SERVER_KEY");
-
-    if(!cert_file || cert_file[0] == '\0')
-    {
-        cert_file = DEFAULT_CERT_FILE;
-    }
-
-    if(!key_file || key_file[0] == '\0')
-    {
-        key_file = DEFAULT_KEY_FILE;
-    }
 
     SSL_CTX* ssl_ctx = init_server_ssl(
-        cert_file,
-        key_file,
+        DEFAULT_CERT_FILE,
+        DEFAULT_KEY_FILE,
         ssl_error,
         sizeof(ssl_error)
     );
