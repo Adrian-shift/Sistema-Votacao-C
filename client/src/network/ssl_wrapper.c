@@ -1,6 +1,7 @@
 #include "ssl_wrapper.h"
 
 #include <limits.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,6 +58,56 @@ static void capture_openssl_error(
         error_code,
         error_buffer,
         error_buffer_size
+    );
+}
+
+static void capture_ssl_handshake_error(
+    SSL* ssl,
+    int result,
+    char* error_buffer,
+    size_t error_buffer_size,
+    const char* fallback_message
+)
+{
+    unsigned long error_code;
+    int ssl_error;
+
+    if(!error_buffer || error_buffer_size == 0)
+    {
+        return;
+    }
+
+    ssl_error = SSL_get_error(ssl, result);
+    error_code = ERR_get_error();
+
+    if(error_code != 0)
+    {
+        ERR_error_string_n(
+            error_code,
+            error_buffer,
+            error_buffer_size
+        );
+        return;
+    }
+
+    if(ssl_error == SSL_ERROR_SYSCALL && errno != 0)
+    {
+        snprintf(
+            error_buffer,
+            error_buffer_size,
+            "%s: %s",
+            fallback_message,
+            strerror(errno)
+        );
+        return;
+    }
+
+    snprintf(
+        error_buffer,
+        error_buffer_size,
+        "%s (SSL_get_error=%d)",
+        fallback_message,
+        ssl_error
     );
 }
 
@@ -202,6 +253,13 @@ SSL* ssl_connect(
 )
 {
     SSL* ssl = SSL_new(ctx);
+    int result;
+
+    if(error_buffer && error_buffer_size > 0)
+    {
+        error_buffer[0] = '\0';
+    }
+
     if(!ssl)
     {
         capture_openssl_error(
@@ -214,9 +272,13 @@ SSL* ssl_connect(
 
     SSL_set_fd(ssl, socket_fd);
 
-    if(SSL_connect(ssl) <= 0)
+    result = SSL_connect(ssl);
+
+    if(result <= 0)
     {
-        capture_openssl_error(
+        capture_ssl_handshake_error(
+            ssl,
+            result,
             error_buffer,
             error_buffer_size,
             "Falha no handshake SSL"

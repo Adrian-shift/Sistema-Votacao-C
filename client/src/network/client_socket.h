@@ -1,6 +1,7 @@
 #ifndef CLIENT_SOCKET_H
 #define CLIENT_SOCKET_H
 
+#include <stddef.h>
 #include <openssl/ssl.h>
 
 typedef struct {
@@ -11,7 +12,9 @@ typedef struct {
 
 ssl_connection_t* connect_server_ssl(
     const char *ip,
-    int port
+    int port,
+    char *error_buffer,
+    size_t error_buffer_size
 );
 
 void close_ssl_connection(ssl_connection_t* conn);

@@ -23,6 +23,7 @@ int main()
     char candidate[64];
 
     char response[256];
+    char connect_error[256];
 
     newtInit();
 
@@ -34,15 +35,20 @@ int main()
         voter_id
     );
 
-    ssl_connection_t* conn =
-        connect_server_ssl(ip, port);
+        ssl_connection_t* conn =
+        connect_server_ssl(
+            ip,
+            port,
+            connect_error,
+            sizeof(connect_error)
+        );
 
     if(!conn)
     {
         newtWinMessage(
             "Erro",
             "OK",
-            "Falha ao conectar (SSL)"
+            connect_error[0] ? connect_error : "Falha ao conectar (SSL)"
         );
 
         newtFinished();

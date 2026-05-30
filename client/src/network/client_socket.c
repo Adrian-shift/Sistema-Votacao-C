@@ -15,14 +15,40 @@
 #define CONNECT_TIMEOUT_SECONDS 5
 #define CA_CERT_FILE "certs/ca.crt"
 
+static void set_error_message(
+    char *error_buffer,
+    size_t error_buffer_size,
+    const char *message
+)
+{
+    if(!error_buffer || error_buffer_size == 0)
+    {
+        return;
+    }
+
+    snprintf(
+        error_buffer,
+        error_buffer_size,
+        "%s",
+        message ? message : "erro desconhecido"
+    );
+}
+
 ssl_connection_t* connect_server_ssl(
     const char *ip,
-    int port
+    int port,
+    char *error_buffer,
+    size_t error_buffer_size
 )
 {
     int sock;
 
     struct sockaddr_in server_addr;
+
+    if(error_buffer && error_buffer_size > 0)
+    {
+        error_buffer[0] = '\0';
+    }
 
     sock = socket(
         AF_INET,
@@ -32,6 +58,11 @@ ssl_connection_t* connect_server_ssl(
 
     if(sock < 0)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao criar socket"
+        );
         return NULL;
     }
 
@@ -45,6 +76,11 @@ ssl_connection_t* connect_server_ssl(
         &server_addr.sin_addr
     ) != 1)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "IP invalido"
+        );
         close(sock);
         return NULL;
     }
@@ -53,12 +89,22 @@ ssl_connection_t* connect_server_ssl(
 
     if(flags < 0)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao consultar estado do socket"
+        );
         close(sock);
         return NULL;
     }
 
     if(fcntl(sock, F_SETFL, flags | O_NONBLOCK) < 0)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao configurar socket"
+        );
         close(sock);
         return NULL;
     }
@@ -71,6 +117,11 @@ ssl_connection_t* connect_server_ssl(
 
     if(result < 0 && errno != EINPROGRESS)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao conectar ao servidor"
+        );
         close(sock);
         return NULL;
     }
@@ -97,6 +148,11 @@ ssl_connection_t* connect_server_ssl(
 
         if(result <= 0)
         {
+            set_error_message(
+                error_buffer,
+                error_buffer_size,
+                "Timeout na conexao"
+            );
             close(sock);
             return NULL;
         }
@@ -112,6 +168,11 @@ ssl_connection_t* connect_server_ssl(
             &socket_error_len
         ) < 0 || socket_error != 0)
         {
+            set_error_message(
+                error_buffer,
+                error_buffer_size,
+                "Falha ao verificar estado da conexao"
+            );
             close(sock);
             return NULL;
         }
@@ -119,15 +180,19 @@ ssl_connection_t* connect_server_ssl(
 
     if(fcntl(sock, F_SETFL, flags) < 0)
     {
+        set_error_message(
+            error_buffer,
+            error_buffer_size,
+            "Falha ao restaurar socket"
+        );
         close(sock);
         return NULL;
     }
 
-    char ssl_error[256];
     SSL_CTX* ssl_ctx = init_client_ssl(
         CA_CERT_FILE,
-        ssl_error,
-        sizeof(ssl_error)
+        error_buffer,
+        error_buffer_size
     );
     if(!ssl_ctx)
     {
@@ -138,8 +203,8 @@ ssl_connection_t* connect_server_ssl(
     SSL* ssl = ssl_connect(
         ssl_ctx,
         sock,
-        ssl_error,
-        sizeof(ssl_error)
+        error_buffer,
+        error_buffer_size
     );
     if(!ssl)
     {
