@@ -53,7 +53,7 @@ make
 1. Gerar certificados uma vez.
 2. Compilar o cliente com `client/src/network/embedded_ca.h` gerado.
 3. Distribuir somente o executavel do cliente.
-4. O servidor continua usando `certs/server.crt` e `certs/server.key`; quando executado a partir de `server/build`, ele resolve isso como `../../certs/server.crt` e `../../certs/server.key`.
+4. O servidor continua usando `certs/server.crt` e `certs/server.key`; o binario resolve isso a partir do proprio executavel como `../certs/server.crt` e `../certs/server.key`.
 
 ## Observacao
 
