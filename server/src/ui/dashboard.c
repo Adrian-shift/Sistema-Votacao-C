@@ -29,6 +29,189 @@ static void show_access_denied()
     );
 }
 
+static void show_text_window(
+    const char *title,
+    const char *text,
+    int width,
+    int height
+)
+{
+    newtComponent form;
+    newtComponent box;
+    newtComponent btn_close;
+
+    newtCenteredWindow(
+        width,
+        height,
+        title
+    );
+
+    box = newtTextbox(
+        2,
+        2,
+        width - 4,
+        height - 6,
+        NEWT_FLAG_BORDER | NEWT_FLAG_SCROLL
+    );
+
+    btn_close = newtButton(
+        (width - 8) / 2,
+        height - 3,
+        "Voltar"
+    );
+
+    newtTextboxSetText(
+        box,
+        text
+    );
+
+    form = newtForm(NULL, NULL, 0);
+
+    newtFormAddComponents(
+        form,
+        box,
+        btn_close,
+        NULL
+    );
+
+    newtRunForm(form);
+
+    newtFormDestroy(form);
+    newtPopWindow();
+}
+
+static void collect_logs_text(char *buffer, size_t size)
+{
+    size_t used = 0;
+
+    if(size == 0)
+    {
+        return;
+    }
+
+    buffer[0] = '\0';
+
+    server_state_lock();
+
+    for(int i = 0; i < server_state.log_count; i++)
+    {
+        size_t remaining = size - used;
+
+        if(remaining <= 1)
+        {
+            break;
+        }
+
+        int written = snprintf(
+            buffer + used,
+            remaining,
+            "%s\n",
+            server_state.logs[i]
+        );
+
+        if(written < 0)
+        {
+            break;
+        }
+
+        if((size_t)written >= remaining)
+        {
+            used = size - 1;
+            break;
+        }
+
+        used += (size_t)written;
+    }
+
+    server_state_unlock();
+
+    if(used == 0)
+    {
+        snprintf(
+            buffer,
+            size,
+            "Nenhum log registrado ainda.\n"
+        );
+    }
+}
+
+static void show_logs_popup(void)
+{
+    char logs[8192];
+    char text[8192];
+    int connected_clients;
+    int active_threads;
+    int total_votes;
+
+    server_state_lock();
+    connected_clients = server_state.connected_clients;
+    active_threads = server_state.active_threads;
+    server_state_unlock();
+
+    total_votes = count_votes();
+
+    collect_logs_text(
+        logs,
+        sizeof(logs)
+    );
+
+    snprintf(
+        text,
+        sizeof(text),
+        "Logs recentes do servidor\n\n"
+        "Clientes conectados: %d\n"
+        "Threads ativas: %d\n"
+        "Votos registrados: %d\n\n"
+        "%s",
+        connected_clients,
+        active_threads,
+        total_votes,
+        logs
+    );
+
+    show_text_window(
+        "Logs",
+        text,
+        66,
+        20
+    );
+}
+
+static void show_clients_popup(void)
+{
+    char text[512];
+    int connected_clients;
+    int active_threads;
+    int total_votes;
+
+    server_state_lock();
+    connected_clients = server_state.connected_clients;
+    active_threads = server_state.active_threads;
+    server_state_unlock();
+
+    total_votes = count_votes();
+
+    snprintf(
+        text,
+        sizeof(text),
+        "Resumo de clientes\n\n"
+        "Clientes conectados atualmente: %d\n"
+        "Threads ativas: %d\n"
+        "Votos registrados: %d\n\n"
+        "Use F2 para ver os logs detalhados.",
+        connected_clients,
+        active_threads,
+        total_votes
+    );
+
+    show_text_window(
+        "Clientes",
+        text,
+        52,
+        14
+    );
+}
+
 void update_dashboard_text(
     newtComponent status_box,
     newtComponent logs_box
@@ -232,10 +415,7 @@ void start_dashboard()
             {
                 if(admin_action_allowed("Logs"))
                 {
-                    show_popup(
-                        "Logs",
-                        "Visualizacao detalhada de logs"
-                    );
+                    show_logs_popup();
                 }
                 else
                 {
@@ -246,10 +426,7 @@ void start_dashboard()
             {
                 if(admin_action_allowed("Clientes"))
                 {
-                    show_popup(
-                        "Clientes",
-                        "Clientes conectados atualmente"
-                    );
+                    show_clients_popup();
                 }
                 else
                 {
@@ -274,10 +451,7 @@ void start_dashboard()
             {
                 if(admin_action_allowed("Logs"))
                 {
-                    show_popup(
-                        "Logs",
-                        "Visualizacao detalhada de logs"
-                    );
+                    show_logs_popup();
                 }
                 else
                 {
@@ -288,10 +462,7 @@ void start_dashboard()
             {
                 if(admin_action_allowed("Clientes"))
                 {
-                    show_popup(
-                        "Clientes",
-                        "Clientes conectados atualmente"
-                    );
+                    show_clients_popup();
                 }
                 else
                 {
