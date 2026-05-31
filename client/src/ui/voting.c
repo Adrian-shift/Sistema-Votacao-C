@@ -1,4 +1,5 @@
 #include <newt.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "voting.h"
@@ -8,6 +9,9 @@ void show_voting_menu(
 )
 {
     newtComponent form;
+    newtComponent lbl_title;
+    newtComponent lbl_help;
+    newtComponent lbl_hint;
 
     newtComponent listbox;
 
@@ -19,11 +23,32 @@ void show_voting_menu(
         "Escolha seu candidato"
     );
 
+    lbl_title =
+        newtLabel(
+            2,
+            1,
+            "SELECAO DE CANDIDATO"
+        );
+
+    lbl_help =
+        newtLabel(
+            2,
+            2,
+            "Use as setas para navegar."
+        );
+
+    lbl_hint =
+        newtLabel(
+            2,
+            3,
+            "Enter confirma a escolha."
+        );
+
     listbox =
         newtListbox(
             5,
-            2,
             5,
+            6,
             NEWT_FLAG_RETURNEXIT
         );
 
@@ -45,10 +70,15 @@ void show_voting_menu(
         "candidatoC"
     );
 
+    newtListboxSetCurrent(
+        listbox,
+        0
+    );
+
     btn_vote =
         newtButton(
-            18,
-            12,
+            16,
+            13,
             "Confirmar Voto"
         );
 
@@ -56,6 +86,9 @@ void show_voting_menu(
 
     newtFormAddComponents(
         form,
+        lbl_title,
+        lbl_help,
+        lbl_hint,
         listbox,
         btn_vote,
         NULL
@@ -65,6 +98,11 @@ void show_voting_menu(
 
     char *selected =
         (char*)newtListboxGetCurrent(listbox);
+
+    if(selected == NULL)
+    {
+        selected = "candidatoA";
+    }
 
     strcpy(candidate, selected);
 
